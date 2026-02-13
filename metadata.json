@@ -1,0 +1,5 @@
+{
+  "name": "Copy of ExcelUnprotect",
+  "description": "A secure, client-side tool to remove sheet protection from Excel (.xlsx) files instantly.",
+  "requestFramePermissions": []
+}
