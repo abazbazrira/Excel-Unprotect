@@ -1,9 +1,9 @@
-import React, { useState, useCallback } from 'react';
-import { Icons } from './components/Icons';
-import { NotificationToast } from './components/NotificationToast';
-import { ExcelService } from './services/excelService';
-import { Notification } from './types';
-import saveAs from 'file-saver';
+import React, { useState, useCallback } from "react";
+import { Icons } from "./components/Icons";
+import { NotificationToast } from "./components/NotificationToast";
+import { ExcelService } from "./services/excelService";
+import { Notification } from "./types";
+import saveAs from "file-saver";
 
 export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -12,25 +12,24 @@ export default function App() {
   const [wasProtected, setWasProtected] = useState<boolean | null>(null);
   const [originalFileName, setOriginalFileName] = useState<string>("");
   const [processStep, setProcessStep] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
   const [showLegacyError, setShowLegacyError] = useState(false);
 
-  const addNotification = useCallback((type: Notification['type'], message: string) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setNotifications(prev => [...prev, { id, type, message }]);
-    return id;
-  }, []);
+  const addNotification = useCallback(
+    (type: Notification["type"], message: string) => {
+      const id = Math.random().toString(36).substr(2, 9);
+      setNotifications((prev) => [...prev, { id, type, message }]);
+      return id;
+    },
+    [],
+  );
 
   const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    // Reset input so same file can be selected again later if needed
-    event.target.value = ''; 
-    
-    if (!file) return;
-
+  // Common file processor
+  const processFile = async (file: File) => {
     setProcessedFile(null);
     setWasProtected(null);
     setShowLegacyError(false);
@@ -38,41 +37,52 @@ export default function App() {
     const lowerName = file.name.toLowerCase();
 
     // Specific handling for legacy .xls files
-    if (lowerName.endsWith('.xls')) {
+    if (lowerName.endsWith(".xls")) {
       setOriginalFileName(file.name);
       setShowLegacyError(true);
       return;
     }
 
-    if (!lowerName.endsWith('.xlsx')) {
-      addNotification('error', 'Please upload a valid Excel file (.xlsx).');
+    if (!lowerName.endsWith(".xlsx")) {
+      addNotification("error", "Please upload a valid Excel file (.xlsx).");
       return;
     }
 
     setOriginalFileName(file.name);
     setIsProcessing(true);
     setProcessStep("Starting upload...");
-    
-    const loadingId = addNotification('loading', 'Processing your file...');
+
+    const loadingId = addNotification("loading", "Processing your file...");
 
     try {
-      const { blob, wasProtected } = await ExcelService.unprotectFile(file, (step) => {
-        setProcessStep(step);
-      });
-      
+      const { blob, wasProtected } = await ExcelService.unprotectFile(
+        file,
+        (step) => {
+          setProcessStep(step);
+        },
+      );
+
       setProcessedFile(blob);
       setWasProtected(wasProtected);
       removeNotification(loadingId);
-      
+
       if (wasProtected) {
-        addNotification('success', 'Protection detected and removed successfully.');
+        addNotification(
+          "success",
+          "Protection detected and removed successfully.",
+        );
       } else {
-        addNotification('info', 'No protection found. File is already editable.');
+        addNotification(
+          "info",
+          "No protection found. File is already editable.",
+        );
       }
-      
     } catch (error: any) {
       removeNotification(loadingId);
-      addNotification('error', error.message || 'An unexpected error occurred.');
+      addNotification(
+        "error",
+        error.message || "An unexpected error occurred.",
+      );
       setProcessedFile(null);
       setWasProtected(null);
     } finally {
@@ -81,15 +91,45 @@ export default function App() {
     }
   };
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+    // Reset input so same file can be selected again later if needed
+    event.target.value = "";
+  };
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const onDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processFile(file);
+    }
+  }, []);
+
   const handleDownload = () => {
     if (!processedFile) return;
-    
-    const nameWithoutExt = originalFileName.replace(/\.xlsx$/i, '');
-    const suffix = wasProtected ? 'unlocked' : 'processed';
+
+    const nameWithoutExt = originalFileName.replace(/\.xlsx$/i, "");
+    const suffix = wasProtected ? "unlocked" : "processed";
     const newName = `${nameWithoutExt}_${suffix}.xlsx`;
-    
+
     saveAs(processedFile, newName);
-    addNotification('success', `Downloaded ${newName}`);
+    addNotification("success", `Downloaded ${newName}`);
   };
 
   return (
@@ -100,7 +140,9 @@ export default function App() {
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center space-x-2 text-brand-600">
               <Icons.Unlock className="w-8 h-8" />
-              <span className="font-bold text-xl tracking-tight text-slate-900">ExcelUnprotect</span>
+              <span className="font-bold text-xl tracking-tight text-slate-900">
+                ExcelUnprotect
+              </span>
             </div>
             {/* AI Feature Removed */}
           </div>
@@ -109,7 +151,6 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        
         {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold text-slate-900 sm:text-5xl sm:tracking-tight lg:text-6xl">
@@ -117,89 +158,135 @@ export default function App() {
             <span className="text-brand-600">in seconds.</span>
           </h1>
           <p className="mt-5 max-w-xl mx-auto text-xl text-slate-500">
-            Remove sheet and workbook protection instantly. Secure, client-side processing means your data never leaves your browser.
+            Remove sheet and workbook protection instantly. Secure, client-side
+            processing means your data never leaves your browser.
           </p>
         </div>
 
         {/* Action Card */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           <div className="p-8 sm:p-12">
-            
             {/* Upload Area */}
             {!processedFile && !isProcessing && !showLegacyError && (
               <div className="w-full">
-                <label 
+                <label
                   htmlFor="file-upload"
-                  className="group relative flex flex-col items-center justify-center w-full h-64 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-brand-50 hover:border-brand-300 transition-all duration-300"
+                  className={`group relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${
+                    isDragging
+                      ? "border-brand-500 bg-brand-50 scale-[1.02] shadow-lg"
+                      : "border-slate-300 bg-slate-50 hover:bg-brand-50 hover:border-brand-300"
+                  }`}
+                  onDragOver={onDragOver}
+                  onDragEnter={onDragOver}
+                  onDragLeave={onDragLeave}
+                  onDrop={onDrop}
                 >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <div className="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform duration-300">
-                      <Icons.Upload className="w-8 h-8 text-brand-500" />
+                    <div
+                      className={`p-4 rounded-full shadow-sm mb-4 transition-transform duration-300 ${
+                        isDragging
+                          ? "bg-brand-100 scale-110"
+                          : "bg-white group-hover:scale-110"
+                      }`}
+                    >
+                      <Icons.Upload
+                        className={`w-8 h-8 ${isDragging ? "text-brand-600" : "text-brand-500"}`}
+                      />
                     </div>
-                    <p className="mb-2 text-lg text-slate-700 font-medium">Click to upload or drag and drop</p>
-                    <p className="text-sm text-slate-500">Modern Excel files (.xlsx)</p>
+                    <p
+                      className={`mb-2 text-lg font-medium ${isDragging ? "text-brand-700" : "text-slate-700"}`}
+                    >
+                      {isDragging
+                        ? "Drop file here"
+                        : "Click to upload or drag and drop"}
+                    </p>
+                    <p
+                      className={`text-sm ${isDragging ? "text-brand-600" : "text-slate-500"}`}
+                    >
+                      Modern Excel files (.xlsx)
+                    </p>
                   </div>
-                  <input 
-                    id="file-upload" 
-                    type="file" 
-                    className="hidden" 
+                  <input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
                     accept=".xlsx,.xls"
                     onChange={handleFileUpload}
                   />
                 </label>
                 <div className="mt-6 flex items-start space-x-3 text-sm text-slate-500 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                   <Icons.ShieldAlert className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                   <p>
-                     <strong>Note:</strong> This tool removes <em>Sheet Protection</em> and <em>Workbook Structure Protection</em>. <br/>
-                     Only <strong>.xlsx</strong> files are supported to ensure your formatting is preserved perfectly.
-                   </p>
+                  <Icons.ShieldAlert className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  <p>
+                    <strong>Note:</strong> This tool removes{" "}
+                    <em>Sheet Protection</em> and{" "}
+                    <em>Workbook Structure Protection</em>. <br />
+                    Only <strong>.xlsx</strong> files are supported to ensure
+                    your formatting is preserved perfectly.
+                  </p>
                 </div>
               </div>
             )}
 
             {/* Legacy Format Instruction State */}
             {showLegacyError && (
-               <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-left animate-in fade-in slide-in-from-bottom-4">
-                 <div className="flex items-start mb-4">
-                   <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                     <Icons.AlertCircle className="w-6 h-6 text-orange-600" />
-                   </div>
-                   <div>
-                     <h3 className="text-lg font-bold text-orange-900">Legacy File Detected (.xls)</h3>
-                     <p className="text-orange-800 mt-1">
-                       We noticed you uploaded <strong>{originalFileName}</strong>. To prevent formatting loss, we only support modern <strong>.xlsx</strong> files.
-                     </p>
-                   </div>
-                 </div>
-                 
-                 <div className="bg-white rounded-lg p-4 border border-orange-100 shadow-sm">
-                   <h4 className="font-semibold text-slate-900 mb-3">How to fix this (takes 30 seconds):</h4>
-                   <ol className="list-decimal list-inside space-y-2 text-slate-700 text-sm">
-                     <li>Open your file in <strong>Excel</strong>.</li>
-                     <li>Click on <strong>File {'>'} Save As</strong>.</li>
-                     <li>Select <strong>Excel Workbook (*.xlsx)</strong> from the format dropdown.</li>
-                     <li>Upload the new <strong>.xlsx</strong> file here.</li>
-                   </ol>
-                 </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 text-left animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-start mb-4">
+                  <div className="p-2 bg-orange-100 rounded-lg mr-3">
+                    <Icons.AlertCircle className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-orange-900">
+                      Legacy File Detected (.xls)
+                    </h3>
+                    <p className="text-orange-800 mt-1">
+                      We noticed you uploaded{" "}
+                      <strong>{originalFileName}</strong>. To prevent formatting
+                      loss, we only support modern <strong>.xlsx</strong> files.
+                    </p>
+                  </div>
+                </div>
 
-                 <button 
-                   onClick={() => setShowLegacyError(false)}
-                   className="mt-6 w-full py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-                 >
-                   Try Again
-                 </button>
-               </div>
+                <div className="bg-white rounded-lg p-4 border border-orange-100 shadow-sm">
+                  <h4 className="font-semibold text-slate-900 mb-3">
+                    How to fix this (takes 30 seconds):
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-2 text-slate-700 text-sm">
+                    <li>
+                      Open your file in <strong>Excel</strong>.
+                    </li>
+                    <li>
+                      Click on <strong>File {">"} Save As</strong>.
+                    </li>
+                    <li>
+                      Select <strong>Excel Workbook (*.xlsx)</strong> from the
+                      format dropdown.
+                    </li>
+                    <li>
+                      Upload the new <strong>.xlsx</strong> file here.
+                    </li>
+                  </ol>
+                </div>
+
+                <button
+                  onClick={() => setShowLegacyError(false)}
+                  className="mt-6 w-full py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
             )}
 
             {/* Processing State */}
             {isProcessing && (
               <div className="flex flex-col items-center justify-center h-64">
                 <div className="relative w-24 h-24 mb-6">
-                   <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
-                   <div className="absolute inset-0 border-4 border-brand-500 rounded-full border-t-transparent animate-spin"></div>
-                   <Icons.FileSpreadsheet className="absolute inset-0 m-auto w-8 h-8 text-slate-400" />
+                  <div className="absolute inset-0 border-4 border-slate-100 rounded-full"></div>
+                  <div className="absolute inset-0 border-4 border-brand-500 rounded-full border-t-transparent animate-spin"></div>
+                  <Icons.FileSpreadsheet className="absolute inset-0 m-auto w-8 h-8 text-slate-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-slate-800 mb-2">Processing File</h3>
+                <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                  Processing File
+                </h3>
                 <p className="text-slate-500 animate-pulse">{processStep}</p>
               </div>
             )}
@@ -212,9 +299,15 @@ export default function App() {
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-100 rounded-full mb-6">
                       <Icons.ShieldAlert className="w-10 h-10 text-orange-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Protection Removed!</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                      Protection Removed!
+                    </h2>
                     <p className="text-slate-600 mb-8 max-w-lg mx-auto">
-                      We detected protection in <span className="font-semibold text-slate-900">{originalFileName}</span> and successfully removed it.
+                      We detected protection in{" "}
+                      <span className="font-semibold text-slate-900">
+                        {originalFileName}
+                      </span>{" "}
+                      and successfully removed it.
                     </p>
                   </>
                 ) : (
@@ -222,13 +315,19 @@ export default function App() {
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
                       <Icons.CheckCircle className="w-10 h-10 text-green-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">No Protection Detected</h2>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                      No Protection Detected
+                    </h2>
                     <p className="text-slate-600 mb-8 max-w-lg mx-auto">
-                      <span className="font-semibold text-slate-900">{originalFileName}</span> was already unprotected. We've saved a clean copy for you below.
+                      <span className="font-semibold text-slate-900">
+                        {originalFileName}
+                      </span>{" "}
+                      was already unprotected. We've saved a clean copy for you
+                      below.
                     </p>
                   </>
                 )}
-                
+
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
                   <button
                     onClick={handleDownload}
@@ -237,7 +336,7 @@ export default function App() {
                     <Icons.Download className="w-5 h-5 mr-2" />
                     Download File
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       setProcessedFile(null);
@@ -258,8 +357,12 @@ export default function App() {
       {/* Notifications Container */}
       <div className="fixed bottom-4 left-4 z-40 w-full max-w-sm flex flex-col space-y-2 pointer-events-none">
         <div className="pointer-events-auto">
-          {notifications.map(n => (
-            <NotificationToast key={n.id} notification={n} onDismiss={removeNotification} />
+          {notifications.map((n) => (
+            <NotificationToast
+              key={n.id}
+              notification={n}
+              onDismiss={removeNotification}
+            />
           ))}
         </div>
       </div>
