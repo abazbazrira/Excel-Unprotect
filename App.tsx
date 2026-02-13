@@ -3,6 +3,7 @@ import { Icons } from "./components/Icons";
 import { NotificationToast } from "./components/NotificationToast";
 import { ExcelService } from "./services/excelService";
 import { Notification } from "./types";
+import { Footer } from "./components/Footer";
 import saveAs from "file-saver";
 
 export default function App() {
@@ -366,6 +367,8 @@ export default function App() {
           ))}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

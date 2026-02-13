@@ -1,17 +1,20 @@
-import React from 'react';
-import { 
-  Upload, 
-  FileSpreadsheet, 
-  Unlock, 
-  Download, 
-  X, 
-  CheckCircle, 
+import React from "react";
+import {
+  Upload,
+  FileSpreadsheet,
+  Unlock,
+  Download,
+  X,
+  CheckCircle,
   AlertCircle,
   Loader2,
   ShieldAlert,
   Sparkles,
-  Send
-} from 'lucide-react';
+  Send,
+  Github,
+  Linkedin,
+  Instagram,
+} from "lucide-react";
 
 export const Icons = {
   Upload,
@@ -24,5 +27,8 @@ export const Icons = {
   Loader: Loader2,
   ShieldAlert,
   Sparkles,
-  Send
+  Send,
+  Github,
+  Linkedin,
+  Instagram,
 };
