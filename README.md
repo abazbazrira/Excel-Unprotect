@@ -5,8 +5,10 @@ A secure, client-side tool designed to instantly remove password protection from
 ## 🚀 Features
 
 - **Instant Protection Removal**: Quickly strips Sheet Protection and Workbook Structure Protection from standard .xlsx files.
+- **Drag & Drop Support**: Easily upload files by dragging them into the drop zone.
 - **100% Client-Side Privacy**: Leveraging browser capabilities, no files are ever uploaded to a server. Your data remains private and secure.
 - **Modern & Responsive UI**: Built with React and Tailwind CSS for a clean, user-friendly experience on any device.
+- **Footer with Social Links**: Includes quick access to author's social profiles and project information.
 - **Legacy File Detection**: Alerts users when older .xls files are uploaded and provides instructions for conversion to the supported .xlsx format.
 
 ## 🛠️ How it Works
